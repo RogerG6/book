@@ -1,0 +1,32 @@
+
+1. Busy Status (BUSY) 
+	1 : busy
+	0 : free
+2. Write Enable Latch Status (WEL)
+	1 : enable
+	0 : disable
+3. block protect bit (BP2, BP1, BP0)
+	1 : protected
+	0 : non of array protected 
+4. Top/Bottom protect bit (TB) : controls protect from top or bottom 
+	1 : lower
+	0 : upper
+5. Sector/Block protect bit (SEC)
+	1 : 4K sectors
+	0 : 64K blocks
+6. Compliment protect bit (CMP)
+	1 : previous set of BP2, BP1, BP0, TB, SEC will reverse
+	0 : no reverse
+7. Status Register protect bit (SRP1, SRP2)
+		: controls the method of write protection
+	SRP1	SRP2	/WP		method
+	0		0		x
+	0		1		0
+	0		1		1
+	1		0		x
+	1		1		x
+	
+	
+	
+	
+	

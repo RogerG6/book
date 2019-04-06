@@ -1,0 +1,94 @@
+1. DS18B20概观
+	1. 64bit ROM保存设备独一无二的系列码
+	2. scratchpad：2 byte 温度寄存器
+				1 byte upper & lower alarm reg
+				1 byte config reg(可以设置分辨率， 9/10/11/12bit
+	3. 1 wire bus protocol
+		master device 通过64bit code识别设备和给设备编码
+	4. “parasite power”: operate without an external power supply	
+		通过DQ引脚给设备供电：
+			bus is high: 给设备供电，同时给内部电容充电
+			bus is low : 电容放电给设备供电
+
+2. 操作－测量温度
+	1. 9/10/11/12bit分辨率对应0.5°C, 0.25°C, 0.125°C, and 0.0625°C
+	2. 上电时，设备处于低电量的空闲模式
+	   发出44h给设备，让其进行温度AD转换
+	   转换完成后，将数据保存在2 byte temp reg中in scratchpad, 然后设备以回到空闲模式
+	
+	3. if (external supply)
+	   else if (parasite power)
+	
+	4. 通过查询表或转换方程转换，输出的温度数据是以摄氏度来校准的，用于华氏应用
+	   2 byte temp reg数据格式：
+			12bit : 所有位都用，0-10 data bit, 11-15 sign bit(0:positive, 1:negative)
+			11bit : bit 0 undefined
+			10bit : bit 0/1 undefined
+			9bit  : bit 0/1/2 undefined
+			
+3. 操作－警报信号 
+	alarm trigger reg format:
+		8bit: bit 7   : sign bit(0:positive, 1:negative)
+			  bit 6-0 : data
+	比较过程：
+		temp reg's bit 11-4与upper｜ lower比较
+		如果超出界限，则set alarm flag(可以通过cmd ECh查看此flag)
+		并且此flag在每次测量后都会更新
+		
+4. 供电方式
+
+5. 操作步骤 
+	1. 初始化
+		主机发出rest pulse，然后从机发出presence pules表示在总线上
+	2. 发出ROM cmd
+		search ROM[f0h]
+			让主机确定从机的数目和类型
+		read   ROM[33h]
+			当总线上有从机存在时，发出此命令可以读取64bit ROM code
+			如果有多个从机，则将发生数据冲突(多个从机同时回应)
+		match  ROM[55h]
+			此命令后跟64bit ROM code，以在多个或单个从机的总线上寻址
+			只有匹配的从机才会回应此后的Function cmd
+		skip   ROM[cch]
+			此命令可以同时寻址所有从机，而不用发出64bit ROM code
+			让所有从机开始温度转换
+			但是，当只有一个从机时可以在此命令后跟Read Scratchpad [BEh] cmd
+			当有多个从机时，后跟Read Scratchpad [BEh]会发生数据冲突
+		alarm search
+			此命令发出后，只有发生alarm的从机都会回应
+	3. 发出Function cmd
+		Convert T [44h]
+			此命令初始化温度转换，转换完成数据存储在2 byte temp reg中
+			如果工作在parasite power下，在发出此命令后，10us内总线由主机让pull up拉高在转换期间
+		Write Scratchpad [4Eh]
+			此命令将3 byte数据写入scratchpad
+			1st Th
+			2nd Tl
+			3rd config reg
+			且数据从最低位开始发送，所有3位数据必须在主机发送reset前写入
+		Read Scratchpad [BEh]
+			此命令允许读scratchpad的内容
+			从LSB开始读，直到MSB
+			主机也可以随时发出终止信号只读其中部分数据
+		Copy Scratchpad [48h]
+			此命令将scratchpad中Th,Tl,config reg中的数据cpy到EEPROM中
+			在发出此命令后，10us内总线由主机让pullup 拉高总线持续10ms
+		Recall E2 [B8h]
+			此命令将EEPROM中的Th,Tl,config reg中的数据cpy到scratchpad中
+			且在设备上电时，自动执行此命令，因此上电时scratchpad中数据是合法的
+		Read Power Supply [B4h]	
+			在发出此命令后，read time slot会确定总线上从机是否有用parasite power
+			parasite power   ：pull bus low
+			externally power : pull bus high
+		
+			
+
+
+
+
+
+
+
+
+
+	
